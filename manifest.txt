@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: smtp2api.App
+Class-Path: lib/subethasmtp-3.1.7.jar lib/jackson-databind-2.15.2.jar lib/jackson-core-2.15.2.jar lib/jackson-annotations-2.15.2.jar lib/mail-1.4.4.jar lib/activation-1.1.1.jar
+
