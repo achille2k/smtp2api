@@ -39,11 +39,11 @@
             <version>1.7.36</version>
         </dependency>
         
-        <!-- SLF4J Simple Implementation -->
+        <!-- Logback Implementation (replaces SLF4J Simple) -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>1.7.36</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.11</version>
         </dependency>
 
         <!-- JSON Processing -->
@@ -65,6 +65,20 @@
     <build>
         <sourceDirectory>app/src/main/java</sourceDirectory>
         <testSourceDirectory>app/src/test/java</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>app/src/main/resources</directory>
+                <includes>
+                    <include>**/*.xml</include>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>app/src/test/resources</directory>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

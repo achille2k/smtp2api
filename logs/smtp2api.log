@@ -1,0 +1,8 @@
+2026-04-12 11:13:35.009 [main] INFO  smtp2api.App - Configuration loaded from classpath (JAR)
+2026-04-12 11:13:35.011 [main] INFO  smtp2api.App - ========================================
+2026-04-12 11:13:35.011 [main] INFO  smtp2api.App - Starting SMTP to API v1.0.0
+2026-04-12 11:13:35.013 [main] INFO  smtp2api.App - ========================================
+2026-04-12 11:13:35.013 [main] INFO  smtp2api.App - Log directory: C:\Users\Microsoft\Documents\GitHub\smtp2api\logs
+2026-04-12 11:13:35.013 [main] INFO  smtp2api.App - Log file: C:\Users\Microsoft\Documents\GitHub\smtp2api\logs\smtp2api.log
+2026-04-12 11:13:35.044 [main] INFO  smtp2api.App - SMTP Server is running on port 25...
+2026-04-12 11:13:35.045 [main] INFO  smtp2api.App - Listening for incoming emails...
