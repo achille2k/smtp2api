@@ -6,14 +6,21 @@ import org.subethamail.smtp.server.SMTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.mail.BodyPart;
+import javax.mail.Multipart;
+import javax.mail.Part;
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -64,12 +71,13 @@ public class App {
                         MimeMessage message = new MimeMessage(session, data);
 
                         String subject = message.getSubject();
-                        // Note: Needs more robust handling if content is MultiPart
-                        String body = message.getContent().toString();
+                        Object content = message.getContent();
+                        String body = extractText(content);
 
                         logger.info("Email received from: {}", from);
                         logger.info("Recipient: {}", recipient);
                         logger.info("Subject: {}", subject);
+                        logger.info("Email body length: {}", body != null ? body.length() : 0);
 
                         // 2. Prepare JSON data
                         Map<String, String> mailMap = new HashMap<String, String>();
@@ -79,11 +87,12 @@ public class App {
                         mailMap.put("body", body);
 
                         String jsonPayload = new ObjectMapper().writeValueAsString(mailMap);
-                        
                         logger.debug("Payload: {}", jsonPayload);
-                        
                         // 3. Call REST API using HttpURLConnection (Java 8 compatible)
-                        callRestApi(jsonPayload);
+                        ResponseData response = callRestApi(jsonPayload);
+                        if (response != null && !"00".equals(response.responseCode)) {
+                            logger.warn("API call failed: code={} errorCode={} message={}", response.responseCode, response.errorCode, response.errorMessage);
+                        }
 
                     } catch (Exception e) {
                         logger.error("Error processing email", e);
@@ -133,44 +142,198 @@ public class App {
         return properties;
     }
 
-    private static void callRestApi(String json) {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String apiEndpoint = config.getProperty("api.endpoint", "https://your-api-endpoint.com/webhook");
-                    int timeout = Integer.parseInt(config.getProperty("api.timeout.seconds", "30")) * 1000;
-                    
-                    logger.info("Calling REST API endpoint: {}", apiEndpoint);
-                    
-                    URL url = new URL(apiEndpoint);
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestMethod("POST");
-                    connection.setRequestProperty("Content-Type", "application/json");
-                    connection.setConnectTimeout(timeout);
-                    connection.setReadTimeout(timeout);
-                    connection.setDoOutput(true);
-                    
-                    OutputStream os = connection.getOutputStream();
-                    os.write(json.getBytes("UTF-8"));
-                    os.flush();
-                    os.close();
-                    
-                    int status = connection.getResponseCode();
-                    logger.info("API Response Status: {}", status);
-                    
-                    if (status >= 200 && status < 300) {
-                        logger.info("Email successfully sent to API");
-                    } else {
-                        logger.warn("API returned status: {}", status);
-                    }
-                    
-                    connection.disconnect();
-                } catch (Exception e) {
-                    logger.error("Error calling REST API", e);
+    private static String extractText(Object content) throws Exception {
+        if (content == null) {
+            return "";
+        }
+        if (content instanceof String) {
+            return (String) content;
+        }
+        if (content instanceof MimeMultipart) {
+            return getTextFromMimeMultipart((MimeMultipart) content);
+        }
+        if (content instanceof Multipart) {
+            return getTextFromMimeMultipart((MimeMultipart) content);
+        }
+        return content.toString();
+    }
+
+    private static String getTextFromMimeMultipart(MimeMultipart mimeMultipart) throws Exception {
+        StringBuilder plainText = new StringBuilder();
+        StringBuilder htmlText = new StringBuilder();
+        int count = mimeMultipart.getCount();
+        for (int i = 0; i < count; i++) {
+            BodyPart bodyPart = mimeMultipart.getBodyPart(i);
+            if (bodyPart.isMimeType("text/plain")) {
+                plainText.append(bodyPart.getContent().toString()).append('\n');
+            } else if (bodyPart.isMimeType("text/html")) {
+                htmlText.append(bodyPart.getContent().toString()).append('\n');
+            } else if (bodyPart.getContent() instanceof MimeMultipart) {
+                String nested = getTextFromMimeMultipart((MimeMultipart) bodyPart.getContent());
+                if (nested != null && !nested.isEmpty()) {
+                    plainText.append(nested).append('\n');
                 }
             }
-        });
-        thread.start();
+        }
+        if (plainText.length() > 0) {
+            return plainText.toString().trim();
+        }
+        return htmlText.toString().trim();
+    }
+
+    private static class ResponseData {
+        public String responseCode;
+        public String errorCode;
+        public String errorMessage;
+        public Map<String, Object> data;
+    }
+
+    private static class ApiError {
+        public String ErrorCode;
+        public String Message;
+    }
+
+    private static ResponseData callRestApi(String json) {
+        ResponseData responseData = new ResponseData();
+        String apiEndpoint = config.getProperty("api.endpoint", "https://your-api-endpoint.com/webhook");
+        int timeout = Integer.parseInt(config.getProperty("api.timeout.seconds", "30")) * 1000;
+        boolean retryEnabled = Boolean.parseBoolean(config.getProperty("api.retry.enabled", "false"));
+        int retryAttempts = 1;
+        try {
+            retryAttempts = Integer.parseInt(config.getProperty("api.retry.attempts", "3"));
+        } catch (NumberFormatException ex) {
+            logger.warn("Invalid api.retry.attempts value, using default=3");
+            retryAttempts = 3;
+        }
+        if (retryAttempts < 1) {
+            retryAttempts = 1;
+        }
+
+        int attempt = 1;
+        while (attempt <= retryAttempts) {
+            HttpURLConnection connection = null;
+            try {
+                logger.info("Calling REST API endpoint: {} (attempt {}/{})", apiEndpoint, attempt, retryAttempts);
+                URL url = new URL(apiEndpoint);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                connection.setRequestProperty("Accept", "application/json; charset=utf-8");
+
+                String basicAuth = config.getProperty("api.auth", "");
+                if (!basicAuth.isEmpty()) {
+                    String encoded = java.util.Base64.getEncoder().encodeToString(basicAuth.getBytes(StandardCharsets.US_ASCII));
+                    connection.setRequestProperty("Authorization", "Basic " + encoded);
+                }
+
+                // String sessionId = config.getProperty("api.session.id", "");
+                // if (!sessionId.isEmpty()) {
+                //     connection.setRequestProperty("X-Session-Id", sessionId);
+                // }
+
+                connection.setConnectTimeout(timeout);
+                connection.setReadTimeout(timeout);
+                connection.setDoOutput(true);
+
+                try (OutputStream os = connection.getOutputStream()) {
+                    os.write(json.getBytes(StandardCharsets.UTF_8));
+                }
+
+                int status = connection.getResponseCode();
+                String responseText = readStream(status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream());
+
+                Map<String, Object> responseMap = null;
+                try {
+                    responseMap = new ObjectMapper().readValue(responseText, Map.class);
+                } catch (Exception ex) {
+                    logger.warn("Unable to parse API response JSON", ex);
+                }
+
+                String errorCode = extractString(responseMap, "ErrorCode", "errorCode");
+                String errorMessage = extractString(responseMap, "ErrorMessage", "Message", "message");
+                responseData.data = responseMap;
+
+                if (status >= 200 && status < 300) {
+                    if ("000".equals(errorCode)) {
+                        responseData.responseCode = "00";
+                        responseData.errorCode = errorCode;
+                        return responseData;
+                    }
+                    responseData.responseCode = "99";
+                    responseData.errorCode = errorCode != null ? errorCode : "99";
+                    responseData.errorMessage = errorMessage != null ? errorMessage : "Business error";
+                    return responseData;
+                }
+
+                responseData.responseCode = Integer.toString(status);
+                responseData.errorCode = errorCode != null ? errorCode : responseData.responseCode;
+                responseData.errorMessage = errorMessage != null ? errorMessage : ("HTTP " + status);
+                if (!retryEnabled) {
+                    return responseData;
+                }
+            } catch (IOException ex) {
+                logger.error("Error calling REST API on attempt {}/{}", attempt, retryAttempts, ex);
+                responseData.responseCode = "99";
+                responseData.errorCode = "NO_RESPONSE";
+                responseData.errorMessage = "CAN NOT CALL API: " + ex.getMessage();
+                if (!retryEnabled) {
+                    return responseData;
+                }
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+
+            if (attempt < retryAttempts) {
+                try {
+                    int sleepMs = 1000 * attempt;
+                    logger.info("Retrying API call in {} ms", sleepMs);
+                    Thread.sleep(sleepMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    logger.warn("Retry sleep interrupted", ie);
+                    break;
+                }
+            }
+            attempt++;
+        }
+
+        if (responseData.responseCode == null) {
+            responseData.responseCode = "99";
+            responseData.errorCode = "NO_RESPONSE";
+            responseData.errorMessage = "CAN NOT CALL API: No response received from API.";
+        }
+        return responseData;
+    }
+
+    private static String readStream(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            return "";
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+            return builder.toString();
+        }
+    }
+
+    private static String extractString(Map<String, Object> data, String... keys) {
+        if (data == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = data.get(key);
+            if (value instanceof String) {
+                return (String) value;
+            }
+            if (value != null) {
+                return value.toString();
+            }
+        }
+        return null;
     }
 }

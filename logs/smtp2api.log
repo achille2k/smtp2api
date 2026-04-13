@@ -14,3 +14,27 @@
 2026-04-13 13:42:57.649 [main] INFO  smtp2api.App - Log file: C:\Users\KC01\Documents\GitHub\smtp2api\logs\smtp2api.log
 2026-04-13 13:42:57.672 [main] INFO  smtp2api.App - SMTP Server is running on port 1025...
 2026-04-13 13:42:57.672 [main] INFO  smtp2api.App - Listening for incoming emails...
+2026-04-13 13:52:36.517 [main] INFO  smtp2api.App - Configuration loaded from classpath (JAR)
+2026-04-13 13:52:36.519 [main] INFO  smtp2api.App - ========================================
+2026-04-13 13:52:36.519 [main] INFO  smtp2api.App - Starting SMTP to API v1.0.0
+2026-04-13 13:52:36.519 [main] INFO  smtp2api.App - ========================================
+2026-04-13 13:52:36.519 [main] INFO  smtp2api.App - Log directory: C:\Users\KC01\Documents\GitHub\smtp2api\logs
+2026-04-13 13:52:36.519 [main] INFO  smtp2api.App - Log file: C:\Users\KC01\Documents\GitHub\smtp2api\logs\smtp2api.log
+2026-04-13 13:52:36.546 [main] INFO  smtp2api.App - SMTP Server is running on port 1025...
+2026-04-13 13:52:36.546 [main] INFO  smtp2api.App - Listening for incoming emails...
+2026-04-13 13:59:05.700 [main] INFO  smtp2api.App - Configuration loaded from classpath (JAR)
+2026-04-13 13:59:05.703 [main] INFO  smtp2api.App - ========================================
+2026-04-13 13:59:05.703 [main] INFO  smtp2api.App - Starting SMTP to API v1.0.0
+2026-04-13 13:59:05.703 [main] INFO  smtp2api.App - ========================================
+2026-04-13 13:59:05.703 [main] INFO  smtp2api.App - Log directory: C:\Users\KC01\Documents\GitHub\smtp2api\logs
+2026-04-13 13:59:05.703 [main] INFO  smtp2api.App - Log file: C:\Users\KC01\Documents\GitHub\smtp2api\logs\smtp2api.log
+2026-04-13 13:59:05.732 [main] INFO  smtp2api.App - SMTP Server is running on port 1025...
+2026-04-13 13:59:05.732 [main] INFO  smtp2api.App - Listening for incoming emails...
+2026-04-13 18:00:10.575 [main] INFO  smtp2api.App - Configuration loaded from classpath (JAR)
+2026-04-13 18:00:10.577 [main] INFO  smtp2api.App - ========================================
+2026-04-13 18:00:10.577 [main] INFO  smtp2api.App - Starting SMTP to API v1.0.0
+2026-04-13 18:00:10.577 [main] INFO  smtp2api.App - ========================================
+2026-04-13 18:00:10.577 [main] INFO  smtp2api.App - Log directory: C:\Users\KC01\Documents\GitHub\smtp2api\logs
+2026-04-13 18:00:10.577 [main] INFO  smtp2api.App - Log file: C:\Users\KC01\Documents\GitHub\smtp2api\logs\smtp2api.log
+2026-04-13 18:00:10.601 [main] INFO  smtp2api.App - SMTP Server is running on port 1025...
+2026-04-13 18:00:10.602 [main] INFO  smtp2api.App - Listening for incoming emails...

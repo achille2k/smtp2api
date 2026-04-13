@@ -1,3 +1,4 @@
-smtp2api\App$2.class
 smtp2api\App.class
+smtp2api\App$ResponseData.class
 smtp2api\App$1.class
+smtp2api\App$ApiError.class
